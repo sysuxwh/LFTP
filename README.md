@@ -14,6 +14,12 @@ FTP板块负责调用TCP板块提供的可靠传输接口，进行文件传输�
 - 客户端——client。
 - 服务端——server。
 
+---
+
+**注：server和每个client都既是sender也是receiver。**
+
+---
+
 ## 2.3 接口设计
 TCP板块提供以下接口供FTP调用：
 
