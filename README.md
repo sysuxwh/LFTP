@@ -40,10 +40,20 @@ receiver.bind(localPort) -> bool
 
 - 用于接收方接收数据。该方法阻塞，直到接收到数据包，返回一个处理好的数据包。
 ```python
-receiver.receive() -> bytes
+receiver.recv() -> bytes
 ```
 
-## 2.4 分工
+## 2.4 TCP内部实现
+采用面向对象进行接口封装。
+
+### 2.4.1 sender
+
+### 2.4.2 receiver
+
+## 2.5 FTP内部实现
+
+
+## 2.6 分工
 - 谢涛：TCP
 - 谢玮鸿：FTP
 
