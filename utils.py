@@ -17,8 +17,22 @@ class packet:
         self.rwnd = 2048
         self.data = b''
 
-    def make_pkt(self, data=b''):
+    def __str__(self):
+        temp =  'srcPort: ' + str(self.srcPort) + '\n'
+        temp += 'dstPort: ' +  str(self.dstPort) + '\n'
+        temp += 'seqNum: ' +  str(self.seqNum) + '\n'
+        temp += 'ackNum: ' +  str(self.ackNum) + '\n'
+        temp += 'ack: ' +  str(self.ack) + '\n'
+        temp += 'syn: ' +  str(self.syn) + '\n'
+        temp += 'fin: ' +  str(self.fin) + '\n'
+        temp += 'id: ' +  str(self.id) + '\n'
+        temp += 'rwnd: ' +  str(self.rwnd) + '\n'
+        temp += 'data len: ' + str(len(self.data))
+        return temp
+
+    def make_pkt(self):
         print('===== make packet begin =====')
+        print(self)
         pkt = '{0:016b}'.format(self.srcPort)
         pkt += '{0:016b}'.format(self.dstPort)
         pkt += '{0:032b}'.format(self.seqNum)
@@ -28,16 +42,11 @@ class packet:
         pkt += '{0:01b}'.format(self.fin)
         pkt += '{0:01b}'.format(self.id)
         pkt += '{0:016b}'.format(self.rwnd)
-        print(pkt)
-        if len(data) > 0:
-            pkt += data
-
-        # pkt = bytes(self.srcPort + '$' + self.dstPort + '$' + \
-        #     self.seqNum + '$' + self.ackNum + '$' + \
-        #     self.ack + '$' + self.rst + '$' + self.syn + '$' + self.fin + '$' + \
-        #     self.rwnd + '$' + str(data, encoding='utf-8'), encoding='utf-8')
+        pkt = bytes(pkt, encoding='utf-8')
+        if len(self.data) > 0:
+            pkt += self.data
         print('===== make packet end =====')
-        return bytes(pkt, encoding='utf-8')
+        return pkt
 
 def extract_pkt(pkt):
     print('===== extract packet begin =====')
@@ -56,6 +65,7 @@ def extract_pkt(pkt):
     temp.rwnd = int(bits[100:116], 2)
     if len(bits) > 116:
         temp.data = bits[116:]
+    print(temp)
     print('===== extract packet end =====')
     return temp
 

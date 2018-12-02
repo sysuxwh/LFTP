@@ -13,45 +13,63 @@ class server_states(Enum):
     CLOSED_WAIT=4
     LAST_ACK=5
 
-class receiver_rdt_states(Enum):
-    WAIT_RECV0=0
-    WAIT_RECV1=1
-
 class server:
 
     def __init__(self):
-        self.__localPort = range(12000, 13000)
-        self.__usedPort = np.zeros(1000)
+        self.__localPort = 12000
         self.__remoteIP = '127.0.0.1'
-        self.__remotePort = 12000
         self.__seqNum = 0
         self.__ackNum = 0
         self.__buffer = ''
-        self.__serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.__serverSocket.bind(('127.0.0.1', self.__localPort[0]))
+        self.__serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)        
         self.__state = server_states.CLOSED
+        self.__expectedSeq = 0
+        self.__recv_buffer_size = 16
+        self.__recv_buffer = {}
+        self.__sndpkt_buffer_size = 16
+        self.__sndpkt_buffer = {}
 
     def update_state(self, new_state):
-        print(self.__state, '->', new_state)
+        print('\n', self.__state, '->', new_state, '\n')
         self.__state = new_state
 
     def get_state(self):
         return self.__state
 
-    def rdt_recv(self):
-        print('===== rdt receive begin =====')
+    def bind(self, port=12000):
+        self.__serverSocket.bind(('127.0.0.1', self.__localPort))
+        
+    def rdt_recv(self):                
+        print('\n===== rdt receive begin =====')
         pkt, ip = self.__serverSocket.recvfrom(2048)
-        pass
-        print('===== rdt receive end =====')
-        return pkt, ip
+        recv_pkt = utils.extract_pkt(pkt)
+        if recv_pkt.syn == 1:
+            return recv_pkt, ip
+        if recv_pkt.seqNum == self.__expectedSeq:
+            # put packet's data in recv_buffer
+            # if buffer is full, then drop
+            if len(self.__recv_buffer) < self.__recv_buffer_size:
+                self.__recv_buffer[recv_pkt.seqNum] = recv_pkt.data
+            pkt = utils.packet()
+            pkt.ack = 1
+            pkt.ackNum = self.__expectedSeq
+            self.rdt_send(pkt, ip)
+            self.__expectedSeq = self.__expectedSeq + 1
+        else:
+            # drop
+            pkt = utils.packet()
+            pkt.ack = 1
+            pkt.ackNum = self.__expectedSeq
+            self.rdt_send(pkt, ip)
+
+        print('===== rdt receive end =====\n')
+        return recv_pkt, ip
         
     def rdt_send(self, pkt, ip):
-        print('===== rdt send begin =====')
-        # check state
-        pkt.id = 0
+        print('\n===== rdt send begin =====')
         sndpkt = pkt.make_pkt()
         self.__serverSocket.sendto(sndpkt, ip)
-        print('===== rdt send end =====')
+        print('===== rdt send end =====\n')
     
     def close(self):
         self.__serverSocket.close()
@@ -59,28 +77,26 @@ class server:
 
 if __name__ == '__main__':
     s = server()
+    s.bind(12000)
     while True:
         if s.get_state() == server_states.CLOSED:
             s.update_state(server_states.LISTEN)
         elif s.get_state() == server_states.LISTEN:
-            pkt1, remoteIP = s.rdt_recv()
-            recv_pkt1 = utils.extract_pkt(pkt1)
+            recv_pkt1, remoteIP = s.rdt_recv()
             if recv_pkt1.syn == 1:
                 pkt2 = utils.packet()
-                pkt2.seqNum = utils.rand()
+                # pkt2.seqNum = utils.rand()
                 pkt2.ackNum = recv_pkt1.seqNum + 1
                 pkt2.ack = 1
                 pkt2.syn = 1
                 s.rdt_send(pkt2, remoteIP)
                 s.update_state(server_states.SYN_RECEIVED)
         elif s.get_state() == server_states.SYN_RECEIVED:
-            pkt1, remoteIP = s.rdt_recv()
-            recv_pkt1 = utils.extract_pkt(pkt1)
+            recv_pkt1, remoteIP = s.rdt_recv()
             if recv_pkt1.ack == 1:
                 s.update_state(server_states.ESTABLISHED)
         elif s.get_state() == server_states.ESTABLISHED:
-            pkt1, remoteIP = s.rdt_recv()
-            recv_pkt1 = utils.extract_pkt(pkt1)
+            recv_pkt1, remoteIP = s.rdt_recv()
             if recv_pkt1.fin == 1:
                 # receive fin and send ack
                 pkt2 = utils.packet()
@@ -94,19 +110,19 @@ if __name__ == '__main__':
             # if is ready to close
             pkt2 = utils.packet()
             # set seqNum and ackNum?
+
             pkt2.fin = 1
             s.rdt_send(pkt2, remoteIP)
             s.update_state(server_states.LAST_ACK)
         elif s.get_state() == server_states.LAST_ACK:
-            pkt1, remoteIP = s.rdt_recv()
-            recv_pkt1 = utils.extract_pkt(pkt1)
+            recv_pkt1, remoteIP = s.rdt_recv()
             if recv_pkt1.ack == 1:
                 # receive ack and no send
                 s.update_state(server_states.CLOSED)
                 break
     s.close()
     print('closed socket')
-    
+
 # for test
 # serverPort = 12000
 # serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
