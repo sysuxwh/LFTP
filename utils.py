@@ -14,7 +14,7 @@ class packet:
         self.syn = 0
         self.fin = 0
         self.id = 0
-        self.rwnd = 2048
+        self.rwnd = 16
         self.data = b''
 
     def __str__(self):
@@ -50,21 +50,19 @@ class packet:
 
 def extract_pkt(pkt):
     print('===== extract packet begin =====')
-    # str_pkt = str(pkt, encoding='utf-8')
-    # args = str_pkt.split('$')
-    bits = str(pkt, encoding='utf-8')
+    # pkt = str(pkt[:116], encoding='utf-8')
     temp = packet()
-    temp.srcPort = int(bits[0:16], 2)
-    temp.dstPort = int(bits[16:32], 2)
-    temp.seqNum = int(bits[32:64], 2)
-    temp.ackNum = int(bits[64:96], 2)
-    temp.ack = int(bits[96], 2)
-    temp.syn = int(bits[97], 2)
-    temp.fin = int(bits[98], 2)
-    temp.id = int(bits[99], 2)
-    temp.rwnd = int(bits[100:116], 2)
-    if len(bits) > 116:
-        temp.data = bits[116:]
+    temp.srcPort = int(pkt[0:16], 2)
+    temp.dstPort = int(pkt[16:32], 2)
+    temp.seqNum = int(pkt[32:64], 2)
+    temp.ackNum = int(pkt[64:96], 2)
+    temp.ack = pkt[96] - 48
+    temp.syn = pkt[97] - 48
+    temp.fin = pkt[98] - 48
+    temp.id = pkt[99] - 48
+    temp.rwnd = int(pkt[100:116], 2)
+    if len(pkt) > 116:
+        temp.data = pkt[116:]
     print(temp)
     print('===== extract packet end =====')
     return temp

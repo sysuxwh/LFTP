@@ -6,7 +6,7 @@ import multiprocessing
 import threading
 import select
 
-HOST = '127.0.0.1'
+HOST = '192.168.199.196'
 # HOST = '192.168.199.154'
 FTPPORT = 3154
 PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))+'\\Server\\' # FTP_Server.py的上层目录中的Server目录

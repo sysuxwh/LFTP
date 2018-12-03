@@ -4,7 +4,7 @@ import os, sys, time
 import progressbar
 
 # 下载路径，自行调整
-DOWNLOADPATH='C:\\Users\\XW\\Desktop\\'
+DOWNLOADPATH='C:\\Users\\tao\\Desktop\\'
 bar = progressbar.ProgressBar()
 
 class ftpClient:
