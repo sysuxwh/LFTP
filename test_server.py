@@ -7,9 +7,9 @@ server.listen(6)
 while True:
     client_sock, client_addr = server.accept()
     data = b''
-    count = 200
+    count = 1
     while count:
-        data += client_sock.recv(5)
+        data += client_sock.recv(4)
         count -= 1
     print(str(data, encoding='utf-8'))
     client_sock.close()

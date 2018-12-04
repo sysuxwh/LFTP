@@ -13,7 +13,7 @@ class packet:
         self.ack = 0
         self.syn = 0
         self.fin = 0
-        self.id = 0
+        self.rwnd_check = 0
         self.rwnd = 16
         self.data = b''
 
@@ -25,7 +25,7 @@ class packet:
         temp += 'ack: ' +  str(self.ack) + '\n'
         temp += 'syn: ' +  str(self.syn) + '\n'
         temp += 'fin: ' +  str(self.fin) + '\n'
-        temp += 'id: ' +  str(self.id) + '\n'
+        temp += 'rwnd_check: ' +  str(self.rwnd_check) + '\n'
         temp += 'rwnd: ' +  str(self.rwnd) + '\n'
         temp += 'data len: ' + str(len(self.data))
         return temp
@@ -40,7 +40,7 @@ class packet:
         pkt += '{0:01b}'.format(self.ack)
         pkt += '{0:01b}'.format(self.syn)
         pkt += '{0:01b}'.format(self.fin)
-        pkt += '{0:01b}'.format(self.id)
+        pkt += '{0:01b}'.format(self.rwnd_check)
         pkt += '{0:016b}'.format(self.rwnd)
         pkt = bytes(pkt, encoding='utf-8')
         if len(self.data) > 0:
@@ -59,7 +59,7 @@ def extract_pkt(pkt):
     temp.ack = pkt[96] - 48
     temp.syn = pkt[97] - 48
     temp.fin = pkt[98] - 48
-    temp.id = pkt[99] - 48
+    temp.rwnd_check = pkt[99] - 48
     temp.rwnd = int(pkt[100:116], 2)
     if len(pkt) > 116:
         temp.data = pkt[116:]
