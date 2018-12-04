@@ -31,8 +31,8 @@ class packet:
         return temp
 
     def make_pkt(self):
-        print('===== make packet begin =====')
-        print(self)
+        # print('===== make packet begin =====')
+        # print(self)
         pkt = '{0:016b}'.format(self.srcPort)
         pkt += '{0:016b}'.format(self.dstPort)
         pkt += '{0:032b}'.format(self.seqNum)
@@ -45,11 +45,11 @@ class packet:
         pkt = bytes(pkt, encoding='utf-8')
         if len(self.data) > 0:
             pkt += self.data
-        print('===== make packet end =====')
+        # print('===== make packet end =====')
         return pkt
 
 def extract_pkt(pkt):
-    print('===== extract packet begin =====')
+    # print('===== extract packet begin =====')
     # pkt = str(pkt[:116], encoding='utf-8')
     temp = packet()
     temp.srcPort = int(pkt[0:16], 2)
@@ -63,8 +63,8 @@ def extract_pkt(pkt):
     temp.rwnd = int(pkt[100:116], 2)
     if len(pkt) > 116:
         temp.data = pkt[116:]
-    print(temp)
-    print('===== extract packet end =====')
+    # print(temp)
+    # print('===== extract packet end =====')
     return temp
 
 # def udt_send(sock, pkt, ip, port)

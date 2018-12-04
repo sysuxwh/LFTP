@@ -30,7 +30,7 @@ class mysocket:
         self.__local_addr = local_addr
         
     def connect(self, remote_addr):
-        print('===== handshake begin =====')
+        # print('===== handshake begin =====')
         # send SYN
         snd_pkt = utils.packet()
         snd_pkt.syn = 1
@@ -72,7 +72,7 @@ class mysocket:
                 print('connect: sended ACK to server (%s:%s)' % remote_addr)                
                 self.__remote_addr = (remote_addr[0], recv_pkt.srcPort)
                 break
-        print('===== handshake end =====\n')
+        # print('===== handshake end =====\n')
         return True
 
     def listen(self, num):
@@ -80,7 +80,7 @@ class mysocket:
         listen.start()    
 
     def sub_listen(self, num):
-        print('===== listen begin =====')
+        # print('===== listen begin =====')
         while True:
             time.sleep(1)
             try:
@@ -115,7 +115,7 @@ class mysocket:
             elif recv_pkt.ack == 1 and recv_pkt.ackNum == self.__client_seq[remote_addr] + 1:
                 self.__client_count += 1                
         
-        print('===== listen end =====\n')
+        # print('===== listen end =====\n')
 
     def accept(self):
         while len(self.__client_sock) > self.__client_count:
@@ -152,8 +152,8 @@ class mysocket:
         
     # return true or block to timeout
     def send(self, data):
-        print('===== send begin =====')
-        print('send buffer used:', len(self.__sndpkt_buffer), '(before send)')
+        # print('===== send begin =====')
+        # print('send buffer used:', len(self.__sndpkt_buffer), '(before send)')
         n = math.ceil(len(data) / self.__mss)
         while n > self.__remote_rwnd:
             # wait and check rwnd later
@@ -186,7 +186,7 @@ class mysocket:
         snd_pkt.data = data[(n-1)*self.__mss:]
         while self.rdt_send(snd_pkt) == False:
             pass
-        print('send: sended', n, 'packets to (%s:%s)' % self.__remote_addr)
+        # print('send: sended', n, 'packets to (%s:%s)' % self.__remote_addr)
 
         try_count = 3 # max resend times
         while True:
@@ -200,22 +200,22 @@ class mysocket:
                 for i in range(self.__base, self.__seq_num):
                     # resend the packet that not ack
                     self.__sock.sendto(self.__sndpkt_buffer[i], self.__remote_addr)
-                print('send: timeout, not enough ACKs received, resended data to (%s:%s)' % self.__remote_addr)
+                # print('send: timeout, not enough ACKs received, resended data to (%s:%s)' % self.__remote_addr)
                 try_count -= 1
                 if try_count < 0:
-                    print('send: fail to send data to (%s:%s)' % self.__remote_addr)
+                    # print('send: fail to send data to (%s:%s)' % self.__remote_addr)
                     return False
                 continue
             
             if recv_pkt.ack == 1:
-                print('send: received ACK from (%s:%s)' % remote_addr)
+                # print('send: received ACK from (%s:%s)' % remote_addr)
                 self.__base = recv_pkt.ackNum + 1
                 self.__remote_rwnd = recv_pkt.rwnd
                 if self.__base == self.__seq_num:
                     self.__sndpkt_buffer.clear()
                     break
             
-        print('===== send end =====\n')
+        # print('===== send end =====\n')
         return True
 
     # return: packet object or block to timeout
@@ -244,16 +244,16 @@ class mysocket:
                 self.__sock.sendto(snd_pkt, remote_addr)
                 print('recv: check rwnd')
             elif recv_pkt.ack == 0:
-                self.__rcvpkt_buffer[recv_pkt.seqNum] = recv_pkt
-                print('recv: received packet from (%s:%s)' % remote_addr)
+                # print('recv: received packet from (%s:%s)' % remote_addr)
                 snd_pkt = utils.packet()
                 snd_pkt.ack = 1
-                snd_pkt.ackNum = recv_pkt.seqNum                                
+                snd_pkt.ackNum = recv_pkt.seqNum
                 snd_pkt.rwnd = self.__rcvpkt_buffer_size - len(self.__rcvpkt_buffer)
                 snd_pkt = snd_pkt.make_pkt()
                 self.__sock.sendto(snd_pkt, remote_addr)
-                print('recv: sended ACK to (%s:%s)' % remote_addr)
+                # print('recv: sended ACK to (%s:%s)' % remote_addr)
                 if recv_pkt.seqNum == self.__ack_num:
+                    self.__rcvpkt_buffer[recv_pkt.seqNum] = recv_pkt
                     self.__ack_num += 1
              
         # return recv_pkt, remote_addr
@@ -265,14 +265,14 @@ class mysocket:
             self.__recv_started = True
 
     def recv(self, size):
-        print('\n===== receive begin =====')        
+        # print('\n===== receive begin =====')        
 
         if size > self.__rcvpkt_buffer_size:
-            print('read too much')
+            print('recv: read too much')
             return None
 
         if size == 0:
-            print('read too less')
+            print('recv: read too less')
 
         # todo
         # recv_count = 0
@@ -317,7 +317,7 @@ class mysocket:
             data += temp.data
             read_count += 1
         
-        print('===== receive end =====\n')
+        # print('===== receive end =====\n')
         return data
 
     def setblocking(self, block):

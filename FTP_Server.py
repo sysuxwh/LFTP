@@ -28,7 +28,7 @@ class controlServer:
         while True:
             conn, addr = self.mySocket.accept()
             self.interface(conn)
-            conn.close()
+            # conn.close()
         # self.mySocket.setblocking(False)
         # read_list = [self.mySocket.get_socket()]
         # while True:
