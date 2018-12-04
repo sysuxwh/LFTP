@@ -2,6 +2,7 @@ import utils
 import socket
 import math
 import time
+import threading
 
 class mysocket:
 
@@ -20,6 +21,7 @@ class mysocket:
         self.__client_seq = {}
         self.__client_count = 0
         self.__MSS = 1024
+        self.__recv_started = False
 
     def bind(self, local_addr):
         self.__sock.bind(local_addr)
@@ -69,8 +71,12 @@ class mysocket:
                 break
         print('===== handshake end =====\n')
         return True
-    
+
     def listen(self, num):
+        listen = threading.Thread(target=self.sub_listen, args=(num,))
+        listen.start()    
+
+    def sub_listen(self, num):
         print('===== listen begin =====')
         while True:
             time.sleep(1)
@@ -95,24 +101,28 @@ class mysocket:
                 snd_pkt.ackNum = recv_pkt.seqNum + 1
                 snd_pkt.ack = 1
                 snd_pkt.syn = 1
-                snd_pkt.srcPort = 13000 + self.__client_count
+                snd_pkt.srcPort = 13000 + self.__client_count                
+                new_client_sock = mysocket(remote_addr=remote_addr)
+                self.__client_sock[remote_addr] = new_client_sock
+                new_client_sock.bind(('localhost', 13000 + self.__client_count))
                 snd_pkt = snd_pkt.make_pkt()
                 self.__sock.sendto(snd_pkt, remote_addr)
                 # self.rdt_send(snd_pkt)
                 print('listen: sended SYN to client (%s:%s)' % remote_addr)
             elif recv_pkt.ack == 1 and recv_pkt.ackNum == self.__client_seq[remote_addr] + 1:
-                new_client_sock = mysocket(remote_addr=remote_addr)
-                self.__client_sock[remote_addr] = new_client_sock
-                new_client_sock.bind(('localhost', 13000 + self.__client_count))
-                self.__client_count += 1
+                self.__client_count += 1                
         
         print('===== listen end =====\n')
 
     def accept(self):
+        while len(self.__client_sock) > self.__client_count:
+            # those client who didn't send last ack for handshake
+            keys = list(self.__client_sock.keys())
+            self.__client_sock.pop(keys[-1])
         while len(self.__client_sock) == 0:
             time.sleep(1)
-        for key in self.__client_sock:                 
-            return (self.__client_sock.pop(key), key)
+        keys = list(self.__client_sock.keys())
+        return (self.__client_sock.pop(keys[0]), keys[0])            
 
     def close(self):
         print('closed socket')
@@ -133,6 +143,7 @@ class mysocket:
             return True
         else:
             # refuse_data()
+            print('can not send yet')
             pass
             return False
         
@@ -148,16 +159,14 @@ class mysocket:
             snd_pkt = utils.packet()
             snd_pkt.seqNum = self.__seq_num  
             snd_pkt.data = data[i*self.__MSS : (i+1)*self.__MSS]
-            try:
-                while self.rdt_send(snd_pkt) == False:
-                    pass
-            except Exception as e:                
-                print('can not send yet')
-                return False
+            while self.rdt_send(snd_pkt) == False:
+                pass
+
         snd_pkt = utils.packet()
         snd_pkt.seqNum = self.__seq_num
         snd_pkt.data = data[(n-1)*self.__MSS:]
-        self.rdt_send(snd_pkt)
+        while self.rdt_send(snd_pkt) == False:
+            pass
         print('send: sended', n, 'packets to (%s:%s)' % self.__remote_addr)
 
         try_count = 3 # max resend times
@@ -189,35 +198,44 @@ class mysocket:
         return True
 
     # return: packet object or block to timeout
-    def rdt_recv(self):
-
+    def sub_recv(self):
         if len(self.__rcvpkt_buffer) > self.__rcvpkt_buffer_size:
             print('recv: buffer full')
-            return None, None
+            # return None, None
 
-        try:
-            # remote_addr is a tuple (ip, port)
-            recv_pkt, remote_addr = self.__sock.recvfrom(1024)
-            recv_pkt = utils.extract_pkt(recv_pkt)
-        except:
-            # no packet received
-            print('recv: idle...')
-            return None, None
-            
-        if remote_addr == self.__remote_addr and recv_pkt.ack == 0:
-            self.__rcvpkt_buffer[recv_pkt.ackNum] = recv_pkt
-            print('recv: received packet from (%s:%s)' % remote_addr)
-            snd_pkt = utils.packet()
-            snd_pkt.ack = 1
-            snd_pkt.ackNum = recv_pkt.seqNum
-            snd_pkt.rwnd = self.__rcvpkt_buffer_size - len(self.__rcvpkt_buffer)
-            snd_pkt = snd_pkt.make_pkt()
-            self.__sock.sendto(snd_pkt, remote_addr)
+        while True:
+            try:
+                # remote_addr is a tuple (ip, port)
+                recv_pkt, remote_addr = self.__sock.recvfrom(1024)
+                recv_pkt = utils.extract_pkt(recv_pkt)
+            except:
+                # no packet received
+                # print('recv: idle...')
+                continue
+                # return None, None
+                
+            # todo expected_seq
+            if recv_pkt.ack == 0:
+                self.__rcvpkt_buffer[recv_pkt.seqNum] = recv_pkt
+                print('recv: received packet from (%s:%s)' % remote_addr)
+                snd_pkt = utils.packet()
+                snd_pkt.ack = 1
+                snd_pkt.ackNum = recv_pkt.seqNum
+                snd_pkt.rwnd = self.__rcvpkt_buffer_size - len(self.__rcvpkt_buffer)
+                snd_pkt = snd_pkt.make_pkt()
+                self.__sock.sendto(snd_pkt, remote_addr)
+                print('recv: sended ACK to (%s:%s)' % remote_addr)
              
-        return recv_pkt, remote_addr
+        # return recv_pkt, remote_addr
+
+    def rdt_recv(self):
+        if self.__recv_started == False:
+            recv = threading.Thread(target=self.sub_recv)
+            recv.start()
+            self.__recv_started = True
 
     def recv(self, size):
-        print('\n===== receive begin =====')
+        print('\n===== receive begin =====')        
 
         if size > self.__rcvpkt_buffer_size:
             print('read too much')
@@ -227,13 +245,36 @@ class mysocket:
             print('read too less')
 
         # todo
-        recv_count = 0
-        while recv_count < size:
-            recv_pkt, remote_addr = self.rdt_recv()
-            if recv_pkt is None:
-                time.sleep(1)
-                continue
-            recv_count += 1
+        # recv_count = 0
+        # while recv_count < size:
+        #     recv_pkt, remote_addr = self.rdt_recv()
+        #     if recv_pkt is None:
+        #         time.sleep(1)
+        #         continue
+        #     recv_count += 1
+        self.rdt_recv()
+        
+        # while True:
+        #     try:
+        #         while len(self.__rcvpkt_buffer) < size:
+        #             # wait for recv
+        #             time.sleep(1)
+        #             pass
+        #     except:
+        #         if len(self.__rcvpkt_buffer) == 0:
+        #             continue
+        #         else:
+        #             break
+        sleep_count = 10
+        while len(self.__rcvpkt_buffer) < size:
+            time.sleep(0.5)
+            sleep_count -= 1            
+            if sleep_count < 0:
+                if len(self.__rcvpkt_buffer) > 0:
+                    break
+                else:
+                    sleep_count += 1
+            pass
 
         data = b''
         length = len(self.__rcvpkt_buffer)
@@ -248,3 +289,6 @@ class mysocket:
         
         print('===== receive end =====\n')
         return data
+
+    def setblocking(self, block):
+        self.__sock.setblocking(block)
