@@ -16,6 +16,7 @@ class mysocket:
         self.__sndpkt_buffer = {}
         self.__rcvpkt_buffer_size = 16
         self.__rcvpkt_buffer = {}
+        self.__local_addr = ('localhost', 12000)
         self.__remote_addr = remote_addr
         self.__client_sock = {}
         self.__client_seq = {}
@@ -26,6 +27,7 @@ class mysocket:
 
     def bind(self, local_addr):
         self.__sock.bind(local_addr)
+        self.__local_addr = local_addr
         
     def connect(self, remote_addr):
         print('===== handshake begin =====')
@@ -88,7 +90,7 @@ class mysocket:
                     break
                 recv_pkt, remote_addr = self.__sock.recvfrom(2048)
                 recv_pkt = utils.extract_pkt(recv_pkt)
-            except:
+            except Exception as e:
                 continue
             
             if recv_pkt.syn == 1:
@@ -102,10 +104,10 @@ class mysocket:
                 snd_pkt.ackNum = recv_pkt.seqNum + 1
                 snd_pkt.ack = 1
                 snd_pkt.syn = 1
-                snd_pkt.srcPort = 13000 + self.__client_count                
+                snd_pkt.srcPort = self.__local_addr[1] + 10 * (self.__client_count + 1)
                 new_client_sock = mysocket(remote_addr=remote_addr)
                 self.__client_sock[remote_addr] = new_client_sock
-                new_client_sock.bind(('localhost', 13000 + self.__client_count))
+                new_client_sock.bind(('localhost', snd_pkt.srcPort))
                 snd_pkt = snd_pkt.make_pkt()
                 self.__sock.sendto(snd_pkt, remote_addr)
                 # self.rdt_send(snd_pkt)
@@ -227,8 +229,7 @@ class mysocket:
                 # remote_addr is a tuple (ip, port)
                 recv_pkt, remote_addr = self.__sock.recvfrom(2048)
                 recv_pkt = utils.extract_pkt(recv_pkt)
-            except Exception as e:
-                print(e)            
+            except Exception as e:                
                 # no packet received
                 # print('recv: idle...')
                 continue
@@ -321,3 +322,6 @@ class mysocket:
 
     def setblocking(self, block):
         self.__sock.setblocking(block)
+
+    def get_socket(self):
+        return self.__sock

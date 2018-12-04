@@ -1,4 +1,4 @@
-import socket
+import mysocket as socket
 import json
 import os, sys, time
 
@@ -6,10 +6,10 @@ import multiprocessing
 import threading
 import select
 
-HOST = '192.168.199.196'
+HOST = '127.0.0.1'
 # HOST = '192.168.199.154'
 FTPPORT = 3154
-PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))+'\\Server\\' # FTP_Server.py的上层目录中的Server目录
+PATH = os.path.dirname(os.path.abspath(__file__))+'\\Server\\' # FTP_Server.py的同级目录中的Server目录
 
 # 控制连接类
 class controlServer:
@@ -18,27 +18,31 @@ class controlServer:
         self.port = kwargs['port']                  # ftp端口
         self.portQueue =kwargs['portQueue']         # 存放端口的队列
         self.dataQueue = kwargs['dataQueue']        # 存放传输数据的队列
-        self.mySocket = socket.socket()
+        self.mySocket = socket.mysocket()
         print('Server system init!\n')
 
     # 建立控制连接
     def connect(self):
         self.mySocket.bind((self.ipaddr, self.port))    # 将server的端口号和该socket关联起来
         self.mySocket.listen(100)                       # 请求连接最大为100
-        self.mySocket.setblocking(False)
-        read_list = [self.mySocket]
         while True:
-            readable, writeble, errored = select.select(read_list, [], [])
-            for s in readable:
-                if s is self.mySocket:
-                    print('Get a connection')
-                    conn, addr = self.mySocket.accept()     # 当有client请求时，创建一个新套接字，由该client专用
-                    read_list.append(conn)
-                else:
-                    if self.interface(s) == False:
-                        s.close()
-                        read_list.remove(s)                    # 两台主机之间传输控制信息的接口
-        # conn.close()                            # 关闭套接字
+            conn, addr = self.mySocket.accept()
+            self.interface(conn)
+            conn.close()
+        # self.mySocket.setblocking(False)
+        # read_list = [self.mySocket.get_socket()]
+        # while True:
+        #     readable, writeble, errored = select.select(read_list, [], [])
+        #     for s in readable:
+        #         if s is self.mySocket.get_socket():
+        #             print('Get a connection')
+        #             conn, addr = self.mySocket.accept()     # 当有client请求时，创建一个新套接字，由该client专用
+        #             read_list.append(conn)
+        #         else:
+        #             if self.interface(s) == False:
+        #                 s.close()
+        #                 read_list.remove(s)                    # 两台主机之间传输控制信息的接口
+        # # conn.close()                            # 关闭套接字
 
     # 接受client的上传命令后的处理
     def clientUpload(self, conn, size, name):
@@ -82,7 +86,7 @@ class controlServer:
     def interface(self, conn):
         data = None
         try:
-            data = conn.recv(1024)
+            data = conn.recv(5)
         except Exception as e:
             print(e)
 
@@ -111,7 +115,7 @@ class dataServer:
         self.action = kwargs['action']
         self.extra = kwargs['extra']
         self.filesize = kwargs['filesize']
-        self.mySocket = socket.socket()
+        self.mySocket = socket.mysocket()
 
     # 建立数据连接
     def connect(self):
@@ -128,12 +132,14 @@ class dataServer:
 
     # 数据上传
     def dataUpload(self, conn):
+        if os.path.exists(PATH)==False:
+            os.makedirs(PATH)
         file = open(PATH + self.extra, 'wb')
         conn.send('ACK'.encode('utf-8'))
         fileCount = 0
         while fileCount < self.filesize:
             try:
-                data = conn.recv(1024 * 1024)
+                data = conn.recv(5)
                 if data:
                     file.write(data)
                     fileCount += len(data)
@@ -148,7 +154,7 @@ class dataServer:
     def dataDownload(self, conn):
         file = open(self.extra, 'rb')
         try:
-            rcv = conn.recv(1024)
+            rcv = conn.recv(5)
             if rcv.decode('utf-8') != 'ACK':
                 raise ValueError('Wrong signal (no ACK received)')
         except Exception as e:
@@ -188,7 +194,11 @@ def DataConn(*args):
         # 只要队列里还有数据，立即发送
         if not datas.empty():
             data = datas.get()
-            print('Starting Transfer :\n port: %s\n action: %s\n filename: %s\n filesize: %s'%(data['action'], data['port'], data['extra'], data['filesize']))
+            print('Starting Transfer :')
+            print(' port: %s'%data['action'])
+            print(' action: %s'%data['port'])
+            print(' filename: %s'%data['extra'])
+            print(' filesize: %s KB'%(int(data['filesize'])/1024))            
             x = threading.Thread(target = open_server, args = [ports, data['port'], data['action'], data['extra'], data['filesize']])
             x.start()
             time.sleep(0.2)

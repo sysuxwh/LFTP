@@ -1,10 +1,10 @@
 import mysocket
 
-for i in range(2):
+for i in range(1):
     client = mysocket.mysocket()
     if client.connect(('127.0.0.1', 12000)):
         data = b''
-        for i in range(5000, 6000):
+        for i in range(5000, 5020):
             data += bytes(str(i), encoding='utf-8')
         client.send(data)
     client.close()
