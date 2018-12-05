@@ -14,7 +14,7 @@ class mysocket:
         self.__base = 0
         self.__sndpkt_buffer_size = 16
         self.__sndpkt_buffer = {}
-        self.__rcvpkt_buffer_size = 16
+        self.__rcvpkt_buffer_size = 256
         self.__rcvpkt_buffer = {}
         self.__local_addr = ('localhost', 12000)
         self.__remote_addr = remote_addr
@@ -23,7 +23,7 @@ class mysocket:
         self.__client_count = 0
         self.__mss = 1024
         self.__recv_started = False
-        self.__remote_rwnd = 16
+        self.__remote_rwnd = 256
         self.__cwnd = 1
         self.__ssthresh = 8
 
@@ -109,7 +109,7 @@ class mysocket:
                 snd_pkt.srcPort = self.__local_addr[1] + 10 * (self.__client_count + 1)
                 new_client_sock = mysocket(remote_addr=remote_addr)
                 self.__client_sock[remote_addr] = new_client_sock
-                new_client_sock.bind(('localhost', snd_pkt.srcPort))
+                new_client_sock.bind((self.__local_addr[0], snd_pkt.srcPort))
                 snd_pkt = snd_pkt.make_pkt()
                 self.__sock.sendto(snd_pkt, remote_addr)
                 # self.rdt_send(snd_pkt)

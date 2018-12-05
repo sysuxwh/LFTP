@@ -6,8 +6,9 @@ import multiprocessing
 import threading
 import select
 
-HOST = '127.0.0.1'
+# HOST = '127.0.0.1'
 # HOST = '192.168.199.154'
+HOST = '172.18.35.238'
 FTPPORT = 3154
 PATH = os.path.dirname(os.path.abspath(__file__))+'\\Server\\' # FTP_Server.py的同级目录中的Server目录
 
@@ -195,8 +196,8 @@ def DataConn(*args):
         if not datas.empty():
             data = datas.get()
             print('Starting Transfer :')
-            print(' port: %s'%data['action'])
-            print(' action: %s'%data['port'])
+            print(' port: %s'%data['port'])
+            print(' action: %s'%data['action'])
             print(' filename: %s'%data['extra'])
             print(' filesize: %s KB'%(int(data['filesize'])/1024))            
             x = threading.Thread(target = open_server, args = [ports, data['port'], data['action'], data['extra'], data['filesize']])
